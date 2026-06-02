@@ -1,0 +1,18 @@
+# dependencies
+**/node_modules/**
+
+# production
+**/build/**
+**/public/**
+**/charts/**
+
+**/*.svg
+package.json
+todo_list.md
+
+/src/global.less
+/src/theme/*.less
+/src/components/Format/**/style.less
+/src/adComponents/Format/**/style.less
+
+text.md
