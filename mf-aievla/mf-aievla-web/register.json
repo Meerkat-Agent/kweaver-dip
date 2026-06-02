@@ -1,0 +1,80 @@
+[
+  {
+    "name": "aievla",
+    "parent": "model-factory",
+    "orderIndex": 2000,
+    "app": {
+      "textZHCN": "智能评测",
+      "textZHTW": "智慧評測",
+      "textENUS": "Intelligent Evaluation"
+    },
+    "subapp": {
+      "children": {
+        "board": {
+          "parent": "aievla",
+          "name": "board",
+          "orderIndex": 2010,
+          "app": {
+            "textZHCN": "榜单",
+            "textZHTW": "榜單",
+            "textENUS": "Leaderboard",
+            "icon": "//ip:port/aievla/leaderboard.svg"
+          },
+          "subapp": {
+            "entry": "//ip:port/aievla/index.html",
+            "baseRouter": "",
+            "activeRule": "/"
+          }
+        },
+        "evaluation-data": {
+          "parent": "aievla",
+          "name": "evaluation-data",
+          "orderIndex": 2020,
+          "app": {
+            "textZHCN": "评测数据",
+            "textZHTW": "評測數據",
+            "textENUS": "Evaluation Data",
+            "icon": "//ip:port/aievla/evaluation-data.svg"
+          },
+          "subapp": {
+            "entry": "//ip:port/aievla/index.html",
+            "baseRouter": "",
+            "activeRule": "/"
+          }
+        },
+        "indicator": {
+          "parent": "aievla",
+          "name": "indicator",
+          "orderIndex": 2030,
+          "app": {
+            "textZHCN": "评测指标",
+            "textZHTW": "評測名額",
+            "textENUS": "Indicators",
+            "icon": "//ip:port/aievla/indicators.svg"
+          },
+          "subapp": {
+            "entry": "//ip:port/aievla/index.html",
+            "baseRouter": "",
+            "activeRule": "/"
+          }
+        },
+        "effect-evaluation": {
+          "parent": "aievla",
+          "name": "effect-evaluation",
+          "orderIndex": 2040,
+          "app": {
+            "textZHCN": "效果测评",
+            "textZHTW": "效果評測",
+            "textENUS": "Effect Evaluation",
+            "icon": "//ip:port/aievla/effect-evaluation.svg"
+          },
+          "subapp": {
+            "entry": "//ip:port/aievla/index.html",
+            "baseRouter": "",
+            "activeRule": "/"
+          }
+        }
+      }
+    }
+  }
+]

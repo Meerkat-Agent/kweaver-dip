@@ -1,0 +1,170 @@
+curl -X PUT -H "Content-Type: application/json" -d '[
+  {
+    "name": "aievla",
+    "parent": "root",
+    "orderIndex": 6000,
+    "app": {
+      "textZHCN": "智能评测",
+      "textZHTW": "智慧評測",
+      "textENUS": "Intelligent Evaluation"
+    },
+    "subapp": {
+      "children": {
+        "board": {
+          "parent": "aievla",
+          "name": "board",
+          "orderIndex": 6010,
+          "app": {
+            "textZHCN": "榜单",
+            "textZHTW": "榜單",
+            "textENUS": "Leaderboard",
+            "icon": "//ip:port/aievla/leaderboard.svg"
+          },
+          "subapp": {
+            "entry": "//ip:port/aievla/index.html",
+            "baseRouter": "",
+            "activeRule": "/"
+          }
+        },
+        "evaluation-data": {
+          "parent": "aievla",
+          "name": "evaluation-data",
+          "orderIndex": 6020,
+          "app": {
+            "textZHCN": "测评数据集",
+            "textZHTW": "測評數据集",
+            "textENUS": "Evaluation Dataset",
+            "icon": "//ip:port/aievla/evaluation-data.svg"
+          },
+          "subapp": {
+            "entry": "//ip:port/aievla/index.html",
+            "baseRouter": "",
+            "activeRule": "/"
+          }
+        },
+        "indicator": {
+          "parent": "aievla",
+          "name": "indicator",
+          "orderIndex": 6030,
+          "app": {
+            "textZHCN": "测试指标",
+            "textZHTW": "測試名額",
+            "textENUS": "Indicators",
+            "icon": "//ip:port/aievla/indicators.svg"
+          },
+          "subapp": {
+            "entry": "//ip:port/aievla/index.html",
+            "baseRouter": "",
+            "activeRule": "/"
+          }
+        },
+        "effect-evaluation": {
+          "parent": "aievla",
+          "name": "effect-evaluation",
+          "orderIndex": 6040,
+          "app": {
+            "textZHCN": "效果测评",
+            "textZHTW": "效果評測",
+            "textENUS": "Effect Evaluation",
+            "icon": "//ip:port/aievla/effect-evaluation.svg"
+          },
+          "subapp": {
+            "entry": "//ip:port/aievla/index.html",
+            "baseRouter": "",
+            "activeRule": "/"
+          }
+        }
+      }
+    }
+  }
+]' 10.104.140.143:8877/api/workstation/v1/webapp
+
+curl -X PUT -H "Content-Type: application/json" -d '[
+  {
+    "name": "aievla",
+    "parent": "smart-data",
+    "orderIndex": 9000,
+    "app": {
+      "textZHCN": "智能评测",
+      "textZHTW": "智慧評測",
+      "textENUS": "Intelligent Evaluation",
+      "icon": "http://localhost:3000/mf-aievla.svg"
+    },
+    "subapp": {
+      "children": {
+        "board": {
+          "parent": "aievla",
+          "name": "board",
+          "orderIndex": 1010,
+          "app": {
+            "textZHCN": "榜单",
+            "textZHTW": "榜單",
+            "textENUS": "Leaderboard",
+            "icon": "http://localhost:3000/mf-aievla.svg"
+          },
+          "subapp": {
+            "entry": "http://localhost:3000/index.html",
+            "baseRouter": "",
+            "activeRule": "/"
+          }
+        },
+        "evaluation-data": {
+          "parent": "aievla",
+          "name": "evaluation-data",
+          "orderIndex": 1020,
+          "app": {
+            "textZHCN": "评测数据",
+            "textZHTW": "評測數據",
+            "textENUS": "Evaluation Data",
+            "icon": "http://localhost:3000/mf-aievla.svg"
+          },
+          "subapp": {
+            "entry": "http://localhost:3000/index.html",
+            "baseRouter": "",
+            "activeRule": "/"
+          }
+        },
+        "indicator": {
+          "parent": "aievla",
+          "name": "indicator",
+          "orderIndex": 1030,
+          "app": {
+            "textZHCN": "评测指标",
+            "textZHTW": "評測名額",
+            "textENUS": "Indicators",
+            "icon": "http://localhost:3000/mf-aievla.svg"
+          },
+          "subapp": {
+            "entry": "http://localhost:3000/index.html",
+            "baseRouter": "",
+            "activeRule": "/"
+          }
+        },
+        "effect-evaluation": {
+          "parent": "aievla",
+          "name": "effect-evaluation",
+          "orderIndex": 1040,
+          "app": {
+            "textZHCN": "效果测评",
+            "textZHTW": "效果評測",
+            "textENUS": "Effect Evaluation",
+            "icon": "http://localhost:3000/mf-aievla.svg"
+          },
+          "subapp": {
+            "entry": "http://localhost:3000/index.html",
+            "baseRouter": "",
+            "activeRule": "/"
+          }
+        }
+      }
+    }
+  }
+]' 10.106.0.230:8877/api/workstation/v1/webapp
+
+
+curl -X DELETE -H "Content-Type: application/json" -d '[
+  "aievla"
+]' 10.106.0.230:8877/api/workstation/v1/webapp
+
+
+

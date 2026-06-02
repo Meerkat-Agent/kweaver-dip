@@ -1,0 +1,218 @@
+trigger:
+  branches:
+    include:
+      - release/*
+pool:
+  name: AD_Typescript
+
+variables:
+  - group: global-dip
+  - name: LintReportName
+    value: lint_report.xml
+  - name: UTReportName
+    value: junit.xml
+  - name: CoverageReportName
+    value: cobertura-coverage.xml
+  - name: artifactStagingName
+    value: artifactStaging
+  - name: nodeModules
+    value: nodeModulesCopy
+  - name: imageNameNginx
+    value: mf-aievla-nginx
+  - name: TargetArchAMD64
+    value: amd64
+  - name: TargetArchARM64
+    value: arm64
+  - name: branchNameLower
+    value: $[lower(variables['Build.SourceBranchName'])]
+  - name: actualBranch
+    value: $[replace(variables['Build.SourceBranch'], 'refs/heads/', '')]
+  - name: actualBranchLower
+    value: $[lower(variables['actualBranch'])]
+  - name: chartRepo
+    value: 'https://acr.aishu.cn/api/chartrepo/dip/charts'
+
+resources:
+  containers:
+    - container: node
+      endpoint: acr.aishu.cn
+      image: 'ad/node:18.12.1'
+    - container: dotnet
+      endpoint: acr.aishu.cn
+      image: dotnet/runtime:latest
+
+jobs:
+  - job: BuildStaticFiles
+    displayName: 构建静态资源
+    container: node
+    steps:
+      - script: pnpm install
+        displayName: 安装依赖
+
+      - script: pnpm build
+        displayName: 打包
+
+      - task: CopyFiles@2
+        displayName: 复制打包产物、Coverage测试报告、覆盖率报告到BinariesDirectory
+        inputs:
+          SourceFolder: $(Build.SourcesDirectory)
+          Contents: |
+            dist/**
+            coverage/**
+            ${{variables.UTReportName}}
+            ${{variables.LintReportName}}
+          TargetFolder: '$(Build.BinariesDirectory)'
+
+      - task: PublishBuildArtifacts@1
+        displayName: 发布打包产物、Coverage测试报告、覆盖率报告到BinariesDirectory
+        inputs:
+          PathtoPublish: '$(Build.BinariesDirectory)'
+          ArtifactName: ${{variables.artifactStagingName}}
+
+  - job: BuildDockerImage
+    displayName: 构建Docker镜像
+    dependsOn: BuildStaticFiles
+    workspace:
+      clean: all
+    steps:
+      - task: DownloadBuildArtifacts@0
+        displayName: 从BinariesDirectory下载打包产物、Coverage测试报告、覆盖率报告到
+        inputs:
+          artifactName: ${{variables.artifactStagingName}}
+          downloadPath: $(Build.BinariesDirectory)
+
+      - task: Docker@2
+        displayName: 登录Harbor
+        inputs:
+          containerRegistry: 'acr.aishu.cn'
+          command: 'login'
+
+      - bash: |
+          cp -r '$(Build.BinariesDirectory)/${{variables.artifactStagingName}}/dist' nginx
+          cd ./nginx
+          imageUri=acr.aishu.cn/dip/$(imageNameNginx):$(branchNameLower)
+          docker buildx build -t ${imageUri}_amd64 \
+          --file=./Dockerfile \
+          --platform=linux/amd64 . -o type=docker
+
+          docker buildx build -t ${imageUri}_arm64 \
+          --file=./Dockerfile \
+          --platform=linux/arm64 . -o type=docker
+
+          docker tag ${imageUri}_amd64 ${imageUri}_amd64-$(Build.BuildNumber)
+          docker tag ${imageUri}_arm64 ${imageUri}_arm64-$(Build.BuildNumber)
+
+          docker push ${imageUri}_amd64
+          docker push ${imageUri}_amd64-$(Build.BuildNumber)
+          docker push ${imageUri}_arm64
+          docker push ${imageUri}_arm64-$(Build.BuildNumber)
+          docker rmi ${imageUri}_amd64 ${imageUri}_amd64-$(Build.BuildNumber) ${imageUri}_arm64 ${imageUri}_arm64-$(Build.BuildNumber)
+
+          rm -rf /root/.docker/manifests/acr.aishu.cn_dip_$(imageNameNginx)*
+          docker manifest create --amend --insecure ${imageUri} ${imageUri}_amd64 ${imageUri}_arm64
+          docker manifest push --purge ${imageUri}
+          docker manifest create --amend --insecure ${imageUri}-$(Build.BuildNumber) ${imageUri}_amd64-$(Build.BuildNumber) ${imageUri}_arm64-$(Build.BuildNumber)
+          docker manifest push --purge ${imageUri}-$(Build.BuildNumber)
+        displayName: Build Image and push to harbor
+
+  - job: BuildChart
+    displayName: 构建Chart
+    workspace:
+      clean: all
+    steps:
+      - checkout: self
+        fetchDepth: 1
+      - script: |
+          set -e
+          chartVersion=$(branchNameLower)
+          if [[ $(actualBranchLower) == 'develop' ]] || [[ $(actualBranchLower) == feature/* ]] || [[ $(actualBranchLower) == bugfix/* ]]
+          then
+            chartVersion=5.0.0-$(branchNameLower)
+          fi
+          echo "新chartVersion为" $chartVersion
+          sed -i "s/appVersion: .*/appVersion: ${chartVersion}/g" ./charts/mf-aievla/Chart.yaml
+          sed -i "s/version: .*/version: ${chartVersion}/g" ./charts/mf-aievla/Chart.yaml
+          sed -i "s/tag: .*/tag: $(branchNameLower)/g" ./charts/mf-aievla/values.yaml
+          helm package ./charts/mf-aievla
+          chartfilename=`ls | grep tgz`
+          curlOptions="-s -u $(registry.username):$(registry.password) -H \"Content-Type:multipart/form-data\""
+          curl ${curlOptions} -F "chart=@$chartfilename" -X POST $(chartRepo)
+
+  - job: CoverageCheckUt
+    displayName: 测试报告和质量卡点
+    container: dotnet
+    dependsOn: BuildDockerImage
+    steps:
+      - task: DownloadBuildArtifacts@0
+        displayName: 从BinariesDirectory下载打包产物、Coverage测试报告、覆盖率报告到
+        inputs:
+          artifactName: ${{variables.artifactStagingName}}
+          downloadPath: $(Build.BinariesDirectory)
+
+      # UT报告发布
+      - task: PublishTestResults@2
+        displayName: UT报告发布
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '$(Build.BinariesDirectory)/${{variables.artifactStagingName}}/${{variables.UTReportName}}'
+          testRunTitle: 'UT'
+          failTaskOnFailedTests: false
+
+      - task: BuildQualityChecks@8 # 此行保持一致
+        displayName: Quality Gate UT # UT质量卡点 此行保持一致，且需要直接跟在task: BuildQualityChecks@8后
+        inputs:
+          checkWarnings: true # 此行保持一致
+          warningFailOption: 'fixed'
+          warningThreshold: '0' # 阈值固定为0，UT应该100%通过
+          showStatistics: false
+          evaluateTaskWarnings: false
+          evaluateFileWarnings: true
+          warningFilesFolder: '$(Build.BinariesDirectory)/${{variables.artifactStagingName}}'
+          warningFiles: '**/${{variables.UTReportName}}' # 此行保持一致
+          warningFileFilters: '/^.+<\/failure>.*?$/'
+          warningFilesArtifact: '${{variables.artifactStagingName}}'
+
+      # UT行覆盖率报告发布
+      - task: PublishCodeCoverageResults@1
+        displayName: UT行覆盖率报告发布
+        inputs:
+          codeCoverageTool: 'Cobertura'
+          summaryFileLocation: '$(Build.BinariesDirectory)/${{variables.artifactStagingName}}/coverage/${{variables.CoverageReportName}}'
+
+      - task: BuildQualityChecks@8 # 此行保持一致
+        displayName: Quality Gate Coverage # UT行覆盖率质量卡点 此行保持一致，且需要直接跟在task: BuildQualityChecks@8后
+        inputs:
+          coverageType: 'lines'
+          coverageFailOption: 'fixed'
+          checkCoverage: true # 此行保持一致
+          coverageThreshold: '79.0' # 阈值不要使用参数/变量替换，直接固定一个阈值
+
+      # 静态代码扫描报告发布
+      - task: PublishTestResults@2
+        displayName: 静态代码扫描报告发布
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '$(Build.BinariesDirectory)/${{variables.artifactStagingName}}/${{variables.LintReportName}}'
+          testRunTitle: 'Lint'
+          failTaskOnFailedTests: false
+
+      - task: BuildQualityChecks@8 # 此行保持一致
+        displayName: Quality Gate Lint # 静态代码扫描质量卡点 此行保持一致，且需要直接跟在task: BuildQualityChecks@8后
+        inputs:
+          checkWarnings: true # 此行保持一致
+          warningFailOption: 'fixed'
+          warningThreshold: '10' # 阈值不要使用参数/变量替换，直接固定一个阈值
+          showStatistics: false
+          evaluateTaskWarnings: false
+          evaluateFileWarnings: true
+          warningFilesFolder: '$(Build.BinariesDirectory)/${{variables.artifactStagingName}}'
+          warningFiles: '**/${{variables.LintReportName}}' # 此行保持一致
+          warningFileFilters: '/^.+<\/failure>.*?$/'
+          warningFilesArtifact: '${{variables.artifactStagingName}}'
+
+      - script: |
+          cd $(Build.ArtifactStagingDirectory) && rm -rf ./**
+          cd $(Build.BinariesDirectory) && rm -rf ./**
+          cd $(Build.SourcesDirectory) && rm -rf ./**
+        displayName: 'remove source'
+        condition: always()
